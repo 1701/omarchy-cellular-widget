@@ -19,6 +19,60 @@ visible regardless of what else is connected.
 - NetworkManager (standard on Omarchy)
 - A modem NetworkManager/ModemManager can see (`mmcli -L`)
 
+## Getting the modem working at all
+
+The widget only shows what ModemManager/NetworkManager already know about —
+if your modem never gets that far, no icon or config change here will help.
+Two issues are common enough to check first (this is what it took on a
+ThinkPad with a Quectel EM05-G; the same two checks apply broadly):
+
+1. **ModemManager isn't installed by default on Omarchy.** Only
+   `libmm-glib` (a library some other package pulls in as a dependency)
+   ships by default — the actual daemon does not. Without it, NetworkManager
+   never sees the modem as a `gsm` device at all, no matter how correctly
+   the kernel enumerated it.
+
+   ```sh
+   sudo pacman -S modemmanager
+   sudo systemctl enable --now ModemManager
+   ```
+
+2. **FCC unlock.** Many USB WWAN modules (Quectel, Fibocom, etc.) ship in a
+   radio-locked state until a host-side "unlock" step runs, per US FCC
+   modular-transmitter rules. ModemManager already ships the unlock scripts
+   for known modems — under `/usr/share/ModemManager/fcc-unlock.available.d/`
+   — nothing to write yourself. It only *enables* one automatically for USB
+   IDs it recognizes, though, and newer hardware revisions often report a
+   different ID than the one ModemManager's database expects. Symptom: the
+   modem is visible (`mmcli -L`) but refuses to come up, e.g.
+   `AT+CFUN=1` → `+CME ERROR: 3`, or ModemManager logs
+   `Cannot power-up: sotware radio switch is OFF` — easy to mistake for a
+   hardware/BIOS radio-kill switch, but it isn't one.
+
+   Check your modem's USB ID and whether a matching script is merely
+   un-enabled:
+
+   ```sh
+   lsusb | grep -iE 'qualcomm|quectel|fibocom'  # find vendor:product, e.g. 2c7c:0313
+   ls /usr/share/ModemManager/fcc-unlock.available.d/   # is your ID listed?
+   ls /etc/ModemManager/fcc-unlock.d/                   # is it enabled here?
+   ```
+
+   If the ID exists in `available.d` but not in `fcc-unlock.d`, enable it
+   with a symlink and restart ModemManager:
+
+   ```sh
+   sudo ln -s /usr/share/ModemManager/fcc-unlock.available.d/2c7c:0313 \
+     /etc/ModemManager/fcc-unlock.d/2c7c:0313
+   sudo systemctl restart ModemManager
+   ```
+
+   (Swap `2c7c:0313` for your own modem's actual USB ID.)
+
+Once `mmcli -L` shows the modem and `mmcli -m 0` reports a `registered` or
+`connected` state, create a NetworkManager profile for your carrier (see
+[Configuration](#configuration) below) and the widget will pick it up.
+
 ## Features
 
 - Bar icon: signal-strength glyph (or "no signal" when disconnected),
