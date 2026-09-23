@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "markus.cellular",
+  "name": "Cellular",
+  "version": "1.0.0",
+  "author": "markus",
+  "description": "Mobile broadband (WWAN) modem and signal indicator",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "Cellular.qml"
+  },
+  "barWidget": {
+    "displayName": "Cellular",
+    "description": "Mobile broadband modem and signal indicator",
+    "category": "Network",
+    "allowMultiple": false
+  }
+}
